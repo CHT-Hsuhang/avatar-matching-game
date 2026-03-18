@@ -168,10 +168,23 @@
         <h2 class="text-3xl font-bold text-gray-800 mb-6">🎉 恭喜完成所有配對！</h2>
         
         <div class="bg-white rounded-2xl shadow-md p-6 sm:p-8 mb-8 max-w-lg mx-auto text-left">
-            <p class="text-gray-700 mb-6">再次感謝您的參與，您的協助對我們的技術研發非常有幫助。</p>
-            
-            <label for="user-feedback" class="block text-gray-800 font-bold mb-2">您的建議 (選填)</label>
-            <textarea id="user-feedback" rows="5" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors" placeholder="如果有任何建議或想法，歡迎在此填寫..."></textarea>
+            <div id="feedback-form-area">
+                <p class="text-gray-700 mb-6">再次感謝您的參與，您的協助對我們的技術研發非常有幫助。</p>
+                
+                <!-- 新增送出前的提示 -->
+                <div class="bg-blue-50 text-blue-800 p-4 rounded-xl mb-6 flex items-start gap-3 border border-blue-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <p class="text-base font-semibold">小提醒：送出後系統將會為您計算分數，並提供<span class="text-blue-600 underline">正確的圖片解答對照</span>喔！</p>
+                </div>
+
+                <label for="user-feedback" class="block text-gray-800 font-bold mb-2">您的建議 (選填)</label>
+                <textarea id="user-feedback" rows="5" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors" placeholder="如果有任何建議或想法，歡迎在此填寫..."></textarea>
+            </div>
+
+            <!-- 成績單區塊 (預設隱藏，送出後顯示) -->
+            <div id="score-result-area" class="hidden-view">
+                <!-- 成績單內容將由 JS 動態生成 -->
+            </div>
         </div>
 
         <button id="final-submit-btn" 
@@ -218,6 +231,8 @@
         const actionBtn = document.getElementById('action-btn');
         const finalSubmitBtn = document.getElementById('final-submit-btn');
         const stepIndicator = document.getElementById('step-indicator');
+        const feedbackFormArea = document.getElementById('feedback-form-area');
+        const scoreResultArea = document.getElementById('score-result-area');
 
         // 狀態變數
         let currentStep = 1;
@@ -548,7 +563,7 @@
             }
         });
 
-        // 最終送出至 Google Form
+        // 最終送出至 Google Form 與計算成績
         finalSubmitBtn.addEventListener('click', async () => {
             finalSubmitBtn.disabled = true;
             finalSubmitBtn.innerText = '傳送中...';
@@ -580,9 +595,83 @@
                     body: formData
                 });
                 
-                showMessage('🎉 送出成功！', '您的資料與回饋已經成功記錄到系統中，感謝您的參與！', true);
-                finalSubmitBtn.innerText = '已送出';
-                finalSubmitBtn.classList.remove('animate-pulse');
+                // 送出成功，開始計算分數
+                let score = 0;
+                let wrongAnswers = [];
+
+                for (let i = 1; i <= TOTAL_ITEMS; i++) {
+                    if (connections[i] === i) {
+                        score += 5; // 每題 5 分
+                    } else {
+                        wrongAnswers.push({
+                            questionId: i,
+                            userAnswerId: connections[i]
+                        });
+                    }
+                }
+
+                // 隱藏原本的表單與按鈕
+                feedbackFormArea.classList.add('hidden-view');
+                finalSubmitBtn.classList.add('hidden-view');
+
+                // 產生並顯示成績單
+                let resultHTML = `<h3 class="text-4xl font-bold text-blue-600 mb-6 text-center">🏆 您的總分：${score} / 100</h3>`;
+                
+                if (wrongAnswers.length > 0) {
+                    // 為了避免引號衝突，SVG 使用 URL 編碼 (%22 = ")
+                    const getFallbackSVG = (text) => `data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23eee%22/%3E%3Ctext x=%2250%22 y=%2250%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-size=%2214%22 fill=%22%23999%22%3E${text}%3C/text%3E%3C/svg%3E`;
+
+                    resultHTML += `
+                        <div class="bg-red-50 text-red-900 p-5 rounded-xl text-left mt-6 border border-red-200">
+                            <p class="font-bold mb-4 text-lg">💡 以下是需要訂正的部分：</p>
+                            <ul class="space-y-6 text-base">
+                                ${wrongAnswers.map(w => `
+                                    <li class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                        <strong class="block text-lg mb-3 border-b pb-2 text-gray-700">第 ${w.questionId} 題</strong>
+                                        <div class="flex flex-row justify-center items-end gap-3 sm:gap-6">
+                                            <!-- 左圖 (題目) -->
+                                            <div class="text-center w-1/3">
+                                                <span class="block text-xs sm:text-sm font-bold text-gray-500 mb-2">原始照片</span>
+                                                <img src="https://cht-hsuhang.github.io/avatar-matching-game/img/mg${w.questionId}.jpg" 
+                                                     onerror="this.src='${getFallbackSVG(`mg${w.questionId}`)}'"
+                                                     class="w-14 h-14 sm:w-20 sm:h-20 object-cover rounded-full border-4 border-gray-200 shadow-sm mx-auto">
+                                            </div>
+                                            
+                                            <!-- 玩家選錯的圖 -->
+                                            <div class="text-center w-1/3 relative opacity-60">
+                                                <span class="block text-xs sm:text-sm font-bold text-red-500 mb-2">您的選擇</span>
+                                                <img src="https://cht-hsuhang.github.io/avatar-matching-game/img/mg${w.userAnswerId}_p.jpg" 
+                                                     onerror="this.src='${getFallbackSVG(`mg${w.userAnswerId}_p`)}'"
+                                                     class="w-14 h-14 sm:w-20 sm:h-20 object-cover rounded-full border-4 border-red-200 shadow-sm mx-auto grayscale">
+                                                <div class="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-bold text-xs shadow-md">✕</div>
+                                            </div>
+
+                                            <!-- 正確解答 -->
+                                            <div class="text-center w-1/3 relative">
+                                                <span class="block text-xs sm:text-sm font-bold text-green-600 mb-2">正確公仔</span>
+                                                <img src="https://cht-hsuhang.github.io/avatar-matching-game/img/mg${w.questionId}_p.jpg" 
+                                                     onerror="this.src='${getFallbackSVG(`mg${w.questionId}_p`)}'"
+                                                     class="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-full border-4 border-green-400 shadow-md mx-auto transform scale-105">
+                                                <div class="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-green-500 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center font-bold text-sm shadow-md">✓</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    resultHTML += `
+                        <div class="bg-green-50 text-green-800 p-6 rounded-xl mt-6 font-bold text-center border border-green-200 text-lg shadow-sm">
+                            太厲害了！全部配對正確，感謝您的神級眼光！🎉
+                        </div>
+                    `;
+                }
+
+                scoreResultArea.innerHTML = resultHTML;
+                scoreResultArea.classList.remove('hidden-view');
+
+                showMessage('🎉 送出成功！', '您的資料與回饋已經成功記錄，請查看下方的測驗分數！', true);
             } catch (error) {
                 console.error('Submission error:', error);
                 showMessage('❌ 送出失敗', '網路連線似乎有問題，請稍後再試。', false);
