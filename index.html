@@ -1,1 +1,596 @@
-hello!!
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Q版公仔連連看</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #fdfbf7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: pan-y;
+        }
+        
+        .game-area {
+            position: relative;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .avatar-img {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: #f3f4f6;
+            transition: transform 0.2s;
+        }
+
+        @media (min-width: 640px) {
+            .avatar-img {
+                width: 90px;
+                height: 90px;
+            }
+        }
+
+        .avatar-img:hover {
+            transform: scale(1.05);
+        }
+
+        .dot {
+            width: 20px;
+            height: 20px;
+            background-color: #cbd5e1;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            position: relative;
+            z-index: 20;
+            transition: all 0.2s;
+        }
+
+        .dot:hover, .dot.active {
+            background-color: #3b82f6;
+            transform: scale(1.2);
+        }
+
+        .dot.connected {
+            background-color: #10b981;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #message-box {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+        }
+        #message-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 40;
+        }
+
+        /* 隱藏區塊用 */
+        .hidden-view {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-10">
+
+    <!-- 1. 介紹頁 (Intro View) -->
+    <div id="intro-view" class="max-w-3xl mx-auto pt-8 px-4 text-center">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-6">🎈 Q版公仔連連看 🎈</h1>
+        
+        <div class="bg-white rounded-2xl shadow-md p-6 sm:p-8 mb-8">
+            <div class="text-left sm:text-center leading-relaxed text-lg mb-8 space-y-4">
+                <p class="text-gray-800 font-semibold text-xl">
+                    👋 您好！我們是 E41 研發團隊。
+                </p>
+                <p class="text-gray-600">
+                    我們正在開發一項<span class="text-blue-600 font-bold">「照片生成 Q版 3D 公仔」</span>的全新技術，非常需要您的獨到眼光來協助我們評估配對的相似程度！
+                </p>
+                <div class="bg-blue-50 text-blue-800 p-5 rounded-xl inline-block text-left w-full sm:w-auto shadow-sm">
+                    <p class="font-bold mb-2">🎮 遊戲說明：</p>
+                    <ul class="list-disc list-inside space-y-1 text-base">
+                        <li>共有 4 個關卡，每關會出現 5 組圖片。</li>
+                        <li>請幫我們將左側的「真實照片」與右側對應的「3D 公仔」進行拖曳連線。</li>
+                    </ul>
+                </div>
+                <p class="text-gray-600 font-medium pt-2">
+                    您的寶貴意見將是我們技術進步的最大動力，非常感謝您的熱心協助！💖
+                </p>
+            </div>
+            
+            <!-- Web AR 說明與 YouTube 連結 -->
+            <div class="bg-purple-50 text-purple-900 p-6 rounded-xl text-left w-full shadow-sm mb-8 border border-purple-100">
+                <p class="font-bold mb-2 text-lg text-purple-800">✨ 未來應用：</p>
+                <p class="text-base mb-4 leading-relaxed">
+                    這些生成的 3D 公仔，未來將會結合 <strong class="text-purple-700">Web AR 技術</strong>，讓您可以直接在手機網頁上與公仔進行互動，看到更生動的動態呈現！
+                </p>
+                <div class="text-center sm:text-left">
+                    <a href="https://youtube.com/shorts/QXI0EUeJB40?feature=share" target="_blank" rel="noopener noreferrer" 
+                        class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-colors shadow-md transform active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                        點此觀看 3D 公仔展示影片
+                    </a>
+                </div>
+            </div>
+
+            <div class="max-w-xs mx-auto text-left">
+                <label for="user-name" class="block text-gray-800 font-bold mb-2">您的姓名 <span class="text-red-500">*</span></label>
+                <input type="text" id="user-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors" placeholder="請輸入姓名 (必填)">
+            </div>
+        </div>
+
+        <button id="start-btn" disabled 
+            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-12 rounded-full text-xl shadow-lg transition duration-300 transform active:scale-95">
+            開始遊戲
+        </button>
+    </div>
+
+    <!-- 2. 遊戲頁 (Game View) -->
+    <div id="game-view" class="hidden-view max-w-3xl mx-auto pt-8 px-4 text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">🎈 Q版公仔連連看 🎈</h1>
+        <p id="step-indicator" class="text-xl font-semibold text-blue-600 mb-2">第一關 (1/4)</p>
+        <p class="text-gray-600 mb-6">請將左邊的圖與右邊對應的圖連起來（拖拉圓點進行連線）</p>
+
+        <div id="game-container" class="game-area bg-white rounded-3xl shadow-xl p-4 sm:p-8 flex justify-between items-center mb-8 border-4 border-blue-50">
+            <canvas id="line-canvas"></canvas>
+            <div id="left-col" class="flex flex-col gap-4 sm:gap-6 z-20"></div>
+            <div id="right-col" class="flex flex-col gap-4 sm:gap-6 z-20"></div>
+        </div>
+
+        <button id="action-btn" disabled 
+            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-10 rounded-full text-lg shadow-lg transition duration-300 transform active:scale-95">
+            下一關
+        </button>
+    </div>
+
+    <!-- 3. 回饋與送出頁 (Feedback View) -->
+    <div id="feedback-view" class="hidden-view max-w-3xl mx-auto pt-12 px-4 text-center">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">🎉 恭喜完成所有配對！</h2>
+        
+        <div class="bg-white rounded-2xl shadow-md p-6 sm:p-8 mb-8 max-w-lg mx-auto text-left">
+            <p class="text-gray-700 mb-6">再次感謝您的參與，您的協助對我們的技術研發非常有幫助。</p>
+            
+            <label for="user-feedback" class="block text-gray-800 font-bold mb-2">您的建議 (選填)</label>
+            <textarea id="user-feedback" rows="5" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors" placeholder="如果有任何建議或想法，歡迎在此填寫..."></textarea>
+        </div>
+
+        <button id="final-submit-btn" 
+            class="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-12 rounded-full text-xl shadow-lg transition duration-300 transform active:scale-95">
+            確認送出
+        </button>
+    </div>
+
+    <!-- 訊息彈窗 UI -->
+    <div id="message-backdrop"></div>
+    <div id="message-box" class="bg-white rounded-2xl p-6 shadow-2xl text-center min-w-[300px]">
+        <h3 id="message-title" class="text-xl font-bold mb-2"></h3>
+        <p id="message-text" class="text-gray-600 mb-6"></p>
+        <button onclick="closeMessage()" class="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600">確定</button>
+    </div>
+
+    <script>
+        const TOTAL_ITEMS = 20;
+        const TOTAL_STEPS = 4;
+        const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdt1M_5pPs1KyiU-FEOHACjcjZ241v7jQoRV4IJv9eN4j1M5Q/formResponse';
+        
+        // Google 表單欄位 IDs
+        const nameFieldId = 'entry.2124366304';
+        const feedbackFieldId = 'entry.1448367035';
+        const formEntries = {
+            1: 'entry.1986291858',  2: 'entry.727502655',   3: 'entry.1145913295',  4: 'entry.479667906',   5: 'entry.39744871',
+            6: 'entry.316907506',   7: 'entry.335951622',   8: 'entry.1706216525',  9: 'entry.1466732277',  10: 'entry.2055546276',
+            11: 'entry.939862529',  12: 'entry.354284615',  13: 'entry.1431288198', 14: 'entry.1917746667', 15: 'entry.270597109',
+            16: 'entry.1471058620', 17: 'entry.843044860',  18: 'entry.1988435483', 19: 'entry.795604556',  20: 'entry.1618205656'
+        };
+
+        // DOM 元素
+        const introView = document.getElementById('intro-view');
+        const gameView = document.getElementById('game-view');
+        const feedbackView = document.getElementById('feedback-view');
+        const userNameInput = document.getElementById('user-name');
+        const userFeedbackInput = document.getElementById('user-feedback');
+        const startBtn = document.getElementById('start-btn');
+        const leftCol = document.getElementById('left-col');
+        const rightCol = document.getElementById('right-col');
+        const gameContainer = document.getElementById('game-container');
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+        const actionBtn = document.getElementById('action-btn');
+        const finalSubmitBtn = document.getElementById('final-submit-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+
+        // 狀態變數
+        let currentStep = 1;
+        let connections = {}; // 紀錄連線 { leftId: rightId }
+        let isDrawing = false;
+        let startNode = null;
+        let currentMousePos = { x: 0, y: 0 };
+
+        // 視圖切換函數
+        function switchView(viewToShow) {
+            introView.classList.add('hidden-view');
+            gameView.classList.add('hidden-view');
+            feedbackView.classList.add('hidden-view');
+            
+            viewToShow.classList.remove('hidden-view');
+            window.scrollTo(0, 0);
+        }
+
+        // 姓名輸入驗證
+        userNameInput.addEventListener('input', (e) => {
+            startBtn.disabled = e.target.value.trim() === '';
+        });
+
+        // 開始遊戲按鈕
+        startBtn.addEventListener('click', () => {
+            switchView(gameView);
+            initGame();
+        });
+
+        // 隨機打亂陣列
+        function shuffleArray(array) {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        // 獲取當前關卡的項目 ID 陣列
+        function getCurrentItems() {
+            const startIdx = (currentStep - 1) * 5 + 1;
+            return Array.from({ length: 5 }, (_, i) => startIdx + i);
+        }
+
+        // 初始化遊戲 UI
+        function initGame() {
+            const currentItems = getCurrentItems();
+            const leftItems = [...currentItems];
+            const rightItems = shuffleArray([...currentItems]);
+
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+
+            leftItems.forEach(id => {
+                leftCol.appendChild(createItemCard(id, 'left'));
+            });
+
+            rightItems.forEach(id => {
+                rightCol.appendChild(createItemCard(id, 'right'));
+            });
+
+            // 更新 UI 文字
+            stepIndicator.innerText = `第 ${['一','二','三','四'][currentStep-1]} 關 (${currentStep}/${TOTAL_STEPS})`;
+            actionBtn.innerText = currentStep === TOTAL_STEPS ? '完成，前往下一步' : '下一關';
+            updateActionBtn();
+
+            // 等待圖片與版面載入後再計算 Canvas 大小
+            setTimeout(resizeCanvas, 150);
+        }
+
+        // 創建單個卡片與節點
+        function createItemCard(id, side) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-center gap-2 sm:gap-4';
+
+            const img = document.createElement('img');
+            img.className = 'avatar-img';
+            img.draggable = false;
+            
+            if (side === 'left') {
+                img.src = `https://cht-hsuhang.github.io/avatar-matching-game/img/mg${id}.jpg`;
+                img.onerror = () => { img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23eee'/%3E%3Ctext x='50' y='50' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23999'%3Emg${id}%3C/text%3E%3C/svg%3E`; };
+            } else {
+                img.src = `https://cht-hsuhang.github.io/avatar-matching-game/img/mg${id}_p.jpg`;
+                img.onerror = () => { img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23eee'/%3E%3Ctext x='50' y='50' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23999'%3Emg${id}_p%3C/text%3E%3C/svg%3E`; };
+            }
+
+            const dot = document.createElement('div');
+            dot.className = `dot ${side}-dot`;
+            dot.dataset.id = id;
+            dot.dataset.side = side;
+
+            if (side === 'left') {
+                wrapper.appendChild(img);
+                wrapper.appendChild(dot);
+            } else {
+                wrapper.appendChild(dot);
+                wrapper.appendChild(img);
+            }
+
+            return wrapper;
+        }
+
+        function resizeCanvas() {
+            if (gameView.classList.contains('hidden-view')) return;
+            const rect = gameContainer.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawLines();
+        }
+
+        function getDotPos(dotElement) {
+            const containerRect = gameContainer.getBoundingClientRect();
+            const dotRect = dotElement.getBoundingClientRect();
+            return {
+                x: dotRect.left - containerRect.left + dotRect.width / 2,
+                y: dotRect.top - containerRect.top + dotRect.height / 2
+            };
+        }
+
+        function getClientPos(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            else if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function findTargetDot(clientX, clientY, targetSide) {
+            const dots = document.querySelectorAll(`.dot[data-side="${targetSide}"]`);
+            let closestDot = null;
+            let minDist = 40;
+
+            dots.forEach(dot => {
+                const rect = dot.getBoundingClientRect();
+                const dotCenterX = rect.left + rect.width / 2;
+                const dotCenterY = rect.top + rect.height / 2;
+                const dist = Math.hypot(dotCenterX - clientX, dotCenterY - clientY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestDot = dot;
+                }
+            });
+            return closestDot;
+        }
+
+        // 事件處理：開始拖曳
+        function handlePointerDown(e) {
+            const target = e.target;
+            if (target.classList.contains('dot')) {
+                isDrawing = true;
+                const side = target.dataset.side;
+                const id = parseInt(target.dataset.id);
+                startNode = { side, id, element: target };
+                target.classList.add('active');
+
+                if (side === 'left') {
+                    delete connections[id];
+                } else {
+                    for (const [leftId, rightId] of Object.entries(connections)) {
+                        if (rightId === id) {
+                            delete connections[leftId];
+                            break;
+                        }
+                    }
+                }
+
+                updateDotStyles();
+                updateActionBtn();
+
+                const pos = getClientPos(e);
+                const containerRect = gameContainer.getBoundingClientRect();
+                currentMousePos = {
+                    x: pos.x - containerRect.left,
+                    y: pos.y - containerRect.top
+                };
+                
+                drawLines();
+                if (e.cancelable) e.preventDefault();
+            }
+        }
+
+        // 事件處理：拖曳中
+        function handlePointerMove(e) {
+            if (!isDrawing) return;
+            if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+
+            const pos = getClientPos(e);
+            const containerRect = gameContainer.getBoundingClientRect();
+            currentMousePos = {
+                x: pos.x - containerRect.left,
+                y: pos.y - containerRect.top
+            };
+
+            const targetSide = startNode.side === 'left' ? 'right' : 'left';
+            const targetDot = findTargetDot(pos.x, pos.y, targetSide);
+            
+            document.querySelectorAll(`.dot[data-side="${targetSide}"]`).forEach(d => d.classList.remove('active'));
+            if (targetDot) targetDot.classList.add('active');
+
+            drawLines();
+        }
+
+        // 事件處理：結束拖曳
+        function handlePointerUp(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            startNode.element.classList.remove('active');
+
+            const pos = getClientPos(e);
+            const targetSide = startNode.side === 'left' ? 'right' : 'left';
+            const targetDot = findTargetDot(pos.x, pos.y, targetSide);
+
+            document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+
+            if (targetDot) {
+                const targetId = parseInt(targetDot.dataset.id);
+                
+                if (targetSide === 'left') {
+                    delete connections[targetId];
+                } else {
+                    for (const [lId, rId] of Object.entries(connections)) {
+                        if (rId === targetId) delete connections[lId];
+                    }
+                }
+
+                if (startNode.side === 'left') {
+                    connections[startNode.id] = targetId;
+                } else {
+                    connections[targetId] = startNode.id;
+                }
+            }
+
+            updateDotStyles();
+            updateActionBtn();
+            drawLines();
+            startNode = null;
+        }
+
+        function updateDotStyles() {
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('connected'));
+            for (const [leftId, rightId] of Object.entries(connections)) {
+                const leftDot = document.querySelector(`.dot[data-side="left"][data-id="${leftId}"]`);
+                const rightDot = document.querySelector(`.dot[data-side="right"][data-id="${rightId}"]`);
+                if (leftDot) leftDot.classList.add('connected');
+                if (rightDot) rightDot.classList.add('connected');
+            }
+        }
+
+        function updateActionBtn() {
+            const currentItems = getCurrentItems();
+            const isStepComplete = currentItems.every(id => connections[id] !== undefined);
+            
+            if (isStepComplete) {
+                actionBtn.disabled = false;
+                actionBtn.classList.add('animate-pulse');
+            } else {
+                actionBtn.disabled = true;
+                actionBtn.classList.remove('animate-pulse');
+            }
+        }
+
+        function drawLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (const [leftId, rightId] of Object.entries(connections)) {
+                const leftDot = document.querySelector(`.dot[data-side="left"][data-id="${leftId}"]`);
+                const rightDot = document.querySelector(`.dot[data-side="right"][data-id="${rightId}"]`);
+                
+                if (leftDot && rightDot) {
+                    const pos1 = getDotPos(leftDot);
+                    const pos2 = getDotPos(rightDot);
+                    ctx.beginPath();
+                    ctx.moveTo(pos1.x, pos1.y);
+                    const cp1x = pos1.x + (pos2.x - pos1.x) / 2;
+                    ctx.bezierCurveTo(cp1x, pos1.y, cp1x, pos2.y, pos2.x, pos2.y);
+                    ctx.strokeStyle = '#10b981';
+                    ctx.stroke();
+                }
+            }
+
+            if (isDrawing && startNode) {
+                const startPos = getDotPos(startNode.element);
+                ctx.beginPath();
+                ctx.moveTo(startPos.x, startPos.y);
+                const cp1x = startPos.x + (currentMousePos.x - startPos.x) / 2;
+                ctx.bezierCurveTo(cp1x, startPos.y, cp1x, currentMousePos.y, currentMousePos.x, currentMousePos.y);
+                ctx.strokeStyle = '#3b82f6';
+                ctx.stroke();
+            }
+        }
+
+        // 綁定事件監聽器
+        gameContainer.addEventListener('mousedown', handlePointerDown);
+        document.addEventListener('mousemove', handlePointerMove);
+        document.addEventListener('mouseup', handlePointerUp);
+        gameContainer.addEventListener('touchstart', handlePointerDown, { passive: false });
+        document.addEventListener('touchmove', handlePointerMove, { passive: false });
+        document.addEventListener('touchend', handlePointerUp);
+
+        window.addEventListener('resize', () => {
+            clearTimeout(window.resizeTimer);
+            window.resizeTimer = setTimeout(resizeCanvas, 100);
+        });
+
+        function showMessage(title, text, isSuccess) {
+            document.getElementById('message-title').innerText = title;
+            document.getElementById('message-title').className = `text-xl font-bold mb-2 ${isSuccess ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('message-text').innerText = text;
+            document.getElementById('message-backdrop').style.display = 'block';
+            document.getElementById('message-box').style.display = 'block';
+        }
+
+        function closeMessage() {
+            document.getElementById('message-backdrop').style.display = 'none';
+            document.getElementById('message-box').style.display = 'none';
+        }
+
+        // 換關卡按鈕
+        actionBtn.addEventListener('click', () => {
+            if (currentStep < TOTAL_STEPS) {
+                currentStep++;
+                initGame();
+            } else {
+                switchView(feedbackView);
+            }
+        });
+
+        // 最終送出至 Google Form
+        finalSubmitBtn.addEventListener('click', async () => {
+            finalSubmitBtn.disabled = true;
+            finalSubmitBtn.innerText = '傳送中...';
+
+            const formData = new URLSearchParams();
+            
+            // 填寫姓名
+            formData.append(nameFieldId, userNameInput.value.trim());
+
+            // 填寫 20 組連線記錄
+            for (let i = 1; i <= TOTAL_ITEMS; i++) {
+                const rightId = connections[i];
+                if (rightId) {
+                    const fieldId = formEntries[i];
+                    formData.append(fieldId, `mg${rightId}`);
+                }
+            }
+
+            // 填寫建議回饋
+            const feedbackText = userFeedbackInput.value.trim();
+            if (feedbackText) {
+                formData.append(feedbackFieldId, feedbackText);
+            }
+
+            try {
+                await fetch(formUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                });
+                
+                showMessage('🎉 送出成功！', '您的資料與回饋已經成功記錄到系統中，感謝您的參與！', true);
+                finalSubmitBtn.innerText = '已送出';
+                finalSubmitBtn.classList.remove('animate-pulse');
+            } catch (error) {
+                console.error('Submission error:', error);
+                showMessage('❌ 送出失敗', '網路連線似乎有問題，請稍後再試。', false);
+                finalSubmitBtn.disabled = false;
+                finalSubmitBtn.innerText = '確認送出';
+            }
+        });
+
+    </script>
+</body>
+</html>
