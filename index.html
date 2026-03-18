@@ -149,7 +149,7 @@
     <div id="game-view" class="hidden-view max-w-3xl mx-auto pt-8 px-4 text-center">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">🎈 Q版公仔連連看 🎈</h1>
         <p id="step-indicator" class="text-xl font-semibold text-blue-600 mb-2">第一關 (1/4)</p>
-        <p class="text-gray-600 mb-6">請將左邊的圖與右邊對應的圖連起來（拖拉圓點進行連線）</p>
+        <p class="text-gray-600 mb-6">請將左邊的圖與右邊對應的圖連起來（拖拉圖片或圓點都可以）</p>
 
         <div id="game-container" class="game-area bg-white rounded-3xl shadow-xl p-4 sm:p-8 flex justify-between items-center mb-8 border-4 border-blue-50">
             <canvas id="line-canvas"></canvas>
@@ -307,7 +307,10 @@
         // 創建單個卡片與節點
         function createItemCard(id, side) {
             const wrapper = document.createElement('div');
-            wrapper.className = 'flex items-center gap-2 sm:gap-4';
+            // 加入 item-wrapper 讓整區包含圖片和圓點都可以點擊拖曳
+            wrapper.className = 'item-wrapper flex items-center gap-2 sm:gap-4 cursor-pointer p-1 rounded-xl hover:bg-gray-50 transition-colors';
+            wrapper.dataset.id = id;
+            wrapper.dataset.side = side;
 
             const img = document.createElement('img');
             img.className = 'avatar-img';
@@ -323,6 +326,7 @@
 
             const dot = document.createElement('div');
             dot.className = `dot ${side}-dot`;
+            // 不需要特別在 dot 上放 data-* 了，因為外層 wrapper 有，但保留相容畫線用
             dot.dataset.id = id;
             dot.dataset.side = side;
 
@@ -361,6 +365,18 @@
         }
 
         function findTargetDot(clientX, clientY, targetSide) {
+            // 1. 先檢查滑鼠/觸控是否落在圖片或圓點的整個區塊內 (更直覺的拖曳範圍)
+            const wrappers = document.querySelectorAll(`.item-wrapper[data-side="${targetSide}"]`);
+            for (const wrapper of wrappers) {
+                const rect = wrapper.getBoundingClientRect();
+                // 稍微擴大判定範圍，容錯率更高
+                if (clientX >= rect.left - 10 && clientX <= rect.right + 10 &&
+                    clientY >= rect.top - 10 && clientY <= rect.bottom + 10) {
+                    return wrapper.querySelector('.dot');
+                }
+            }
+
+            // 2. 備用方案：透過距離判斷最靠近的圓點
             const dots = document.querySelectorAll(`.dot[data-side="${targetSide}"]`);
             let closestDot = null;
             let minDist = 40;
@@ -380,13 +396,17 @@
 
         // 事件處理：開始拖曳
         function handlePointerDown(e) {
-            const target = e.target;
-            if (target.classList.contains('dot')) {
+            // 改成偵測整個 wrapper (包含圖片和圓點)
+            const wrapper = e.target.closest('.item-wrapper');
+            if (wrapper) {
                 isDrawing = true;
-                const side = target.dataset.side;
-                const id = parseInt(target.dataset.id);
-                startNode = { side, id, element: target };
-                target.classList.add('active');
+                const side = wrapper.dataset.side;
+                const id = parseInt(wrapper.dataset.id);
+                // 線條的起點依然是綁定在圓點上
+                const dotElement = wrapper.querySelector('.dot');
+                
+                startNode = { side, id, element: dotElement };
+                dotElement.classList.add('active');
 
                 if (side === 'left') {
                     delete connections[id];
