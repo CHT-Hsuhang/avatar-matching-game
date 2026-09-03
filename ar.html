@@ -1,3 +1,34 @@
-<a href="intent://arvr.google.com/scene-viewer/1.0?file=https://cht-hsuhang.github.io/avatar-matching-game/model.glb&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;end;">
-  點我直接啟動 Android Scene Viewer
-</a>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebAR Preview</title>
+  <!-- 引入 model-viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <style>
+    model-viewer {
+      width: 100vw;
+      height: 80vh;
+    }
+  </style>
+</head>
+<body>
+
+  <model-viewer 
+    src="https://cht-hsuhang.github.io/avatar-matching-game/model.glb" 
+    ios-src="https://cht-hsuhang.github.io/avatar-matching-game/model.usdz" 
+    alt="3D AR Model"
+    ar 
+    ar-modes="webxr scene-viewer quick-look" 
+    camera-controls 
+    shadow-intensity="1">
+    
+    <!-- 自訂 AR 按鈕（可選） -->
+    <button slot="ar-button" style="padding: 10px 20px; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);">
+      進入 AR 空間
+    </button>
+  </model-viewer>
+
+</body>
+</html>
